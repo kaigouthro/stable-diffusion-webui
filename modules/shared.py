@@ -198,7 +198,7 @@ class State:
         self.current_image_sampling_step = 0
 
     def dict(self):
-        obj = {
+        return {
             "skipped": self.skipped,
             "interrupted": self.interrupted,
             "job": self.job,
@@ -208,8 +208,6 @@ class State:
             "sampling_step": self.sampling_step,
             "sampling_steps": self.sampling_steps,
         }
-
-        return obj
 
     def begin(self):
         self.sampling_step = 0
@@ -432,11 +430,32 @@ options_templates.update(options_section(('interrogate', "Interrogate Options"),
     "deepbooru_filter_tags": OptionInfo("", "filter out those tags from deepbooru output (separated by comma)"),
 }))
 
-options_templates.update(options_section(('extra_networks', "Extra Networks"), {
-    "extra_networks_default_view": OptionInfo("cards", "Default view for Extra Networks", gr.Dropdown, {"choices": ["cards", "thumbs"]}),
-    "extra_networks_default_multiplier": OptionInfo(1.0, "Multiplier for extra networks", gr.Slider, {"minimum": 0.0, "maximum": 1.0, "step": 0.01}),
-    "sd_hypernetwork": OptionInfo("None", "Add hypernetwork to prompt", gr.Dropdown, lambda: {"choices": [""] + [x for x in hypernetworks.keys()]}, refresh=reload_hypernetworks),
-}))
+options_templates.update(
+    options_section(
+        ('extra_networks', "Extra Networks"),
+        {
+            "extra_networks_default_view": OptionInfo(
+                "cards",
+                "Default view for Extra Networks",
+                gr.Dropdown,
+                {"choices": ["cards", "thumbs"]},
+            ),
+            "extra_networks_default_multiplier": OptionInfo(
+                1.0,
+                "Multiplier for extra networks",
+                gr.Slider,
+                {"minimum": 0.0, "maximum": 1.0, "step": 0.01},
+            ),
+            "sd_hypernetwork": OptionInfo(
+                "None",
+                "Add hypernetwork to prompt",
+                gr.Dropdown,
+                lambda: {"choices": [""] + list(hypernetworks.keys())},
+                refresh=reload_hypernetworks,
+            ),
+        },
+    )
+)
 
 options_templates.update(options_section(('ui', "User interface"), {
     "return_grid": OptionInfo(True, "Show grid in results for web"),
@@ -606,7 +625,9 @@ class Options:
             if item.section not in section_ids:
                 section_ids[item.section] = len(section_ids)
 
-        self.data_labels = {k: v for k, v in sorted(settings_items, key=lambda x: section_ids[x[1].section])}
+        self.data_labels = dict(
+            sorted(settings_items, key=lambda x: section_ids[x[1].section])
+        )
 
     def cast_value(self, key, value):
         """casts an arbitrary to the same type as this setting's value with key
