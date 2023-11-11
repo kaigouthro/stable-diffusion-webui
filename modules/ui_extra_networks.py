@@ -19,14 +19,23 @@ def register_page(page):
 
     extra_pages.append(page)
     allowed_dirs.clear()
-    allowed_dirs.update(set(sum([x.allowed_directories_for_previews() for x in extra_pages], [])))
+    allowed_dirs.update(
+        set(
+            sum(
+                (x.allowed_directories_for_previews() for x in extra_pages), []
+            )
+        )
+    )
 
 
 def add_pages_to_demo(app):
     def fetch_file(filename: str = ""):
         from starlette.responses import FileResponse
 
-        if not any([Path(x).absolute() in Path(filename).absolute().parents for x in allowed_dirs]):
+        if all(
+            Path(x).absolute() not in Path(filename).absolute().parents
+            for x in allowed_dirs
+        ):
             raise ValueError(f"File cannot be fetched: {filename}. Must be in one of directories registered by extra pages.")
 
         ext = os.path.splitext(filename)[1].lower()
@@ -64,8 +73,6 @@ class ExtraNetworksPage:
 
     def create_html(self, tabname):
         view = shared.opts.extra_networks_default_view
-        items_html = ''
-
         subdirs = {}
         for parentdir in [os.path.abspath(x) for x in self.allowed_directories_for_previews()]:
             for x in glob.glob(os.path.join(parentdir, '**/*'), recursive=True):
@@ -87,14 +94,14 @@ class ExtraNetworksPage:
 </button>
 """ for subdir in subdirs])
 
-        for item in self.list_items():
-            items_html += self.create_html_for_item(item, tabname)
-
-        if items_html == '':
+        items_html = ''.join(
+            self.create_html_for_item(item, tabname) for item in self.list_items()
+        )
+        if not items_html:
             dirs = "".join([f"<li>{x}</li>" for x in self.allowed_directories_for_previews()])
             items_html = shared.html("extra-networks-no-cards.html").format(dirs=dirs)
 
-        res = f"""
+        return f"""
 <div id='{tabname}_{self.name}_subdirs' class='extra-network-subdirs extra-network-subdirs-{view}'>
 {subdirs_html}
 </div>
@@ -102,8 +109,6 @@ class ExtraNetworksPage:
 {items_html}
 </div>
 """
-
-        return res
 
     def list_items(self):
         raise NotImplementedError()
@@ -169,18 +174,30 @@ def create_ui(container, button, tabname):
     ui.stored_extra_pages = pages_in_preferred_order(extra_pages.copy())
     ui.tabname = tabname
 
-    with gr.Tabs(elem_id=tabname+"_extra_tabs") as tabs:
+    with gr.Tabs(elem_id=f"{tabname}_extra_tabs") as tabs:
         for page in ui.stored_extra_pages:
             with gr.Tab(page.title):
                 page_elem = gr.HTML(page.create_html(ui.tabname))
                 ui.pages.append(page_elem)
 
-    filter = gr.Textbox('', show_label=False, elem_id=tabname+"_extra_search", placeholder="Search...", visible=False)
-    button_refresh = gr.Button('Refresh', elem_id=tabname+"_extra_refresh")
-    button_close = gr.Button('Close', elem_id=tabname+"_extra_close")
+    filter = gr.Textbox(
+        '',
+        show_label=False,
+        elem_id=f"{tabname}_extra_search",
+        placeholder="Search...",
+        visible=False,
+    )
+    button_refresh = gr.Button('Refresh', elem_id=f"{tabname}_extra_refresh")
+    button_close = gr.Button('Close', elem_id=f"{tabname}_extra_close")
 
-    ui.button_save_preview = gr.Button('Save preview', elem_id=tabname+"_save_preview", visible=False)
-    ui.preview_target_filename = gr.Textbox('Preview save filename', elem_id=tabname+"_preview_filename", visible=False)
+    ui.button_save_preview = gr.Button(
+        'Save preview', elem_id=f"{tabname}_save_preview", visible=False
+    )
+    ui.preview_target_filename = gr.Textbox(
+        'Preview save filename',
+        elem_id=f"{tabname}_preview_filename",
+        visible=False,
+    )
 
     def toggle_visibility(is_visible):
         is_visible = not is_visible
@@ -226,7 +243,10 @@ def setup_ui(ui, gallery):
 
         is_allowed = False
         for extra_page in ui.stored_extra_pages:
-            if any([path_is_parent(x, filename) for x in extra_page.allowed_directories_for_previews()]):
+            if any(
+                path_is_parent(x, filename)
+                for x in extra_page.allowed_directories_for_previews()
+            ):
                 is_allowed = True
                 break
 

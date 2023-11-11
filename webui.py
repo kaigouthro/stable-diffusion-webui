@@ -68,10 +68,10 @@ there are reports of issues with training tab on the latest version.
 Use --skip-version-check commandline argument to disable this check.
         """.strip())
 
-    expected_xformers_version = "0.0.16rc425"
     if shared.xformers_available:
         import xformers
 
+        expected_xformers_version = "0.0.16rc425"
         if version.parse(xformers.__version__) < version.parse(expected_xformers_version):
             errors.print_error_explanation(f"""
 You are running xformers {xformers.__version__}.
